@@ -66,7 +66,6 @@ def generate_sample_data():
         'Ready made pet feed', 'Ready-made pig feed', 'Ready made duck feed',
         'ready made feed for other livestock'
     ]
-
 # Function to normalize column names
 def normalize_column_names(df):
     """Normalize column names to handle different naming conventions"""
@@ -111,105 +110,192 @@ with st.sidebar:
     st.subheader("Upload Data")
     uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
-# Initialize session state for column mapping
+# Initialize session state
+if 'df_processed' not in st.session_state:
+    st.session_state.df_processed = None
 if 'column_mapping' not in st.session_state:
     st.session_state.column_mapping = {}
+if 'mapping_complete' not in st.session_state:
+    st.session_state.mapping_complete = False
 
+# Load and clean data
+with st.sidebar:
+    st.header("Data Configuration")
+    st.subheader("Upload Data")
+    uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+
+# Process uploaded file
 if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-    
-    # Show original column names for debugging
-    st.sidebar.info("Columns in your dataset:")
-    for col in df.columns:
-        st.sidebar.write(f"- '{col}'")
-    
-    # Normalize column names
-    df = normalize_column_names(df)
-    
-    st.sidebar.info("After normalization:")
-    for col in df.columns:
-        st.sidebar.write(f"- '{col}'")
-    
-    # Check for missing required columns
-    required_cols = ['Begin month inventory', 'Production', 'Domestic', 'Export', 'Month-end inventory']
-    missing_cols = [c for c in required_cols if c not in df.columns]
-    
-    if missing_cols:
-        st.warning(f"Missing required columns: {missing_cols}")
+    if st.session_state.df_processed is None:
+        df = pd.read_csv(uploaded_file)
         
-        # Allow manual column mapping
-        st.subheader("Column Mapping")
-        st.info("Please map your dataset columns to the required columns:")
+        # Store original column names for reference
+        original_columns = df.columns.tolist()
+        st.session_state.original_columns = original_columns
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("**Required Columns**")
-        with col2:
-            st.write("**Your Dataset Columns**")
+        # Simple normalization (convert to lowercase and replace spaces with underscores)
+        df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_').str.replace('-', '_')
+        st.session_state.df_raw = df
         
-        available_columns = df.columns.tolist()
+        # Check for required columns
+        required_cols = ['begin_month_inventory', 'production', 'domestic', 'export', 'month_end_inventory']
+        available_cols = df.columns.tolist()
         
-        for required_col in missing_cols:
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"{required_col}:")
-            with col2:
-                # Store mapping in session state
-                key = f"map_{required_col}"
-                if key not in st.session_state:
-                    st.session_state[key] = available_columns[0] if available_columns else ""
-                
-                selected_col = st.selectbox(
-                    f"Map to {required_col}",
-                    options=available_columns,
-                    key=key,
-                    label_visibility="collapsed"
-                )
-                st.session_state.column_mapping[required_col] = selected_col
+        missing_cols = [c for c in required_cols if c not in available_cols]
         
-        if st.button("Apply Column Mapping"):
-            # Apply the mapping
-            for required_col, dataset_col in st.session_state.column_mapping.items():
-                if required_col not in df.columns and dataset_col in df.columns:
-                    df[required_col] = df[dataset_col]
-                    st.success(f"Mapped '{dataset_col}' to '{required_col}'")
-            
-            # Refresh to show updated columns
-            st.rerun()
-        
-        st.stop()
-    
-    else:
-        # Process numeric columns
-        numeric_cols = [
-            'Begin month inventory', 'Production', 'Domestic', 'Export',
-            'Total', 'Shipment value (thousand baht)', 'Month-end inventory', 'Capacity'
-        ]
-        
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = df[col].astype(str).str.replace(',', '').astype(float)
-        
-        st.success("Data uploaded and processed successfully!")
+        if missing_cols:
+            st.session_state.missing_cols = missing_cols
+            st.session_state.mapping_needed = True
+        else:
+            st.session_state.mapping_needed = False
+            st.session_state.df_processed = df
+            st.session_state.mapping_complete = True
 
-else:
-    st.info("Using sample data for demonstration")
+# Show column mapping interface if needed
+if uploaded_file is not None and st.session_state.get('mapping_needed', False):
+    st.warning("Some required columns are missing from your dataset.")
+    st.info("Please help us map your dataset columns to the required columns:")
+    
+    st.write("**Your dataset columns:**")
+    for col in st.session_state.original_columns:
+        st.write(f"- '{col}'")
+    
+    st.write("---")
+    
+    # Create mapping interface
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        st.write("**Required Column**")
+        st.write("Begin month inventory")
+        st.write("Month-end inventory")
+        st.write("Production")
+        st.write("Domestic")
+        st.write("Export")
+    
+    with col2:
+        st.write("**Map to Your Column**")
+        
+        # Get available columns for mapping
+        available_options = [""] + st.session_state.df_raw.columns.tolist()
+        
+        # Create select boxes for each required column
+        begin_map = st.selectbox(
+            "Select column for Begin month inventory",
+            options=available_options,
+            key="begin_map",
+            label_visibility="collapsed"
+        )
+        
+        end_map = st.selectbox(
+            "Select column for Month-end inventory",
+            options=available_options,
+            key="end_map",
+            label_visibility="collapsed"
+        )
+        
+        production_map = st.selectbox(
+            "Select column for Production",
+            options=available_options,
+            key="production_map",
+            label_visibility="collapsed"
+        )
+        
+        domestic_map = st.selectbox(
+            "Select column for Domestic",
+            options=available_options,
+            key="domestic_map",
+            label_visibility="collapsed"
+        )
+        
+        export_map = st.selectbox(
+            "Select column for Export",
+            options=available_options,
+            key="export_map",
+            label_visibility="collapsed"
+        )
+    
+    if st.button("Apply Mapping"):
+        # Store the mapping
+        mapping = {
+            'begin_month_inventory': begin_map,
+            'month_end_inventory': end_map,
+            'production': production_map,
+            'domestic': domestic_map,
+            'export': export_map
+        }
+        
+        # Apply the mapping
+        df_processed = st.session_state.df_raw.copy()
+        
+        for required_col, dataset_col in mapping.items():
+            if dataset_col and dataset_col in df_processed.columns:
+                df_processed[required_col] = df_processed[dataset_col]
+        
+        # Check if we have all required columns now
+        missing_after_mapping = [c for c in ['begin_month_inventory', 'month_end_inventory', 'production', 'domestic', 'export'] 
+                               if c not in df_processed.columns]
+        
+        if missing_after_mapping:
+            st.error(f"Still missing columns after mapping: {missing_after_mapping}")
+        else:
+            st.session_state.df_processed = df_processed
+            st.session_state.mapping_complete = True
+            st.session_state.column_mapping = mapping
+            st.success("Column mapping applied successfully!")
+            st.rerun()
+
+# Use sample data if no file uploaded or mapping not complete
+if uploaded_file is None or not st.session_state.get('mapping_complete', False):
+    if uploaded_file is None:
+        st.info("Using sample data for demonstration")
+    else:
+        st.info("Please complete the column mapping above to proceed with your data")
+    
     df = generate_sample_data()
+else:
+    df = st.session_state.df_processed
+    st.success("Using your uploaded data with applied column mapping")
+
+# Now process the numeric columns
+numeric_cols = ['begin_month_inventory', 'production', 'domestic', 'export', 
+                'month_end_inventory', 'capacity', 'shipment_value_thousand_baht', 'total']
+
+for col in numeric_cols:
+    if col in df.columns:
+        df[col] = df[col].astype(str).str.replace(',', '').astype(float)
 
 # Analysis parameters in sidebar
 with st.sidebar:
     st.subheader("Analysis Parameters")
+    
+    # Get unique products, handling potential missing 'Product' column
+    if 'product' in df.columns:
+        product_options = df['product'].unique()
+    else:
+        product_options = ["Unknown Product"]
+        df['product'] = "Unknown Product"
+    
     selected_products = st.multiselect(
         "Select Products to Analyze",
-        options=df['Product'].unique(),
-        default=df['Product'].unique()[:3] if len(df['Product'].unique()) > 3 else df['Product'].unique()
+        options=product_options,
+        default=product_options[:3] if len(product_options) > 3 else product_options
     )
 
+    # Get year range, handling potential missing 'year' column
+    if 'year' in df.columns:
+        min_year = int(df['year'].min())
+        max_year = int(df['year'].max())
+    else:
+        min_year = 2020
+        max_year = 2023
+        df['year'] = 2022  # Default year
+    
     year_range = st.slider(
         "Select Year Range",
-        min_value=int(df['Year'].min()),
-        max_value=int(df['Year'].max()),
-        value=(int(df['Year'].min()), int(df['Year'].max()))
+        min_value=min_year,
+        max_value=max_year,
+        value=(min_year, max_year)
     )
 
     st.subheader("Waste Calculation")
@@ -217,37 +303,35 @@ with st.sidebar:
 
 # Filter data based on selections
 df_filtered = df[
-    (df['Product'].isin(selected_products)) &
-    (df['Year'] >= year_range[0]) &
-    (df['Year'] <= year_range[1])
+    (df['product'].isin(selected_products)) &
+    (df['year'] >= year_range[0]) &
+    (df['year'] <= year_range[1])
 ].copy()
 
-# Check if we have all required columns for waste calculation
-required_waste_cols = ['Begin month inventory', 'Production', 'Domestic', 'Export', 'Month-end inventory']
+# Calculate waste metrics (with checks for required columns)
+required_waste_cols = ['begin_month_inventory', 'production', 'domestic', 'export', 'month_end_inventory']
 has_all_waste_cols = all(col in df_filtered.columns for col in required_waste_cols)
 
 if has_all_waste_cols:
-    # Calculate waste metrics
-    df_filtered['waste'] = (df_filtered['Begin month inventory'] + df_filtered['Production']) - (df_filtered['Domestic'] + df_filtered['Export'] + df_filtered['Month-end inventory'])
-    df_filtered['waste_rate'] = df_filtered['waste'] / df_filtered['Production'].replace(0, 0.001)
-    df_filtered['avg_inventory'] = (df_filtered['Begin month inventory'] + df_filtered['Month-end inventory']) / 2
-    df_filtered['inventory_turnover'] = df_filtered['Domestic'] / df_filtered['avg_inventory'].replace(0, 0.001)
+    df_filtered['waste'] = (df_filtered['begin_month_inventory'] + df_filtered['production']) - (df_filtered['domestic'] + df_filtered['export'] + df_filtered['month_end_inventory'])
+    df_filtered['waste_rate'] = df_filtered['waste'] / df_filtered['production'].replace(0, 0.001)
+    df_filtered['avg_inventory'] = (df_filtered['begin_month_inventory'] + df_filtered['month_end_inventory']) / 2
+    df_filtered['inventory_turnover'] = df_filtered['domestic'] / df_filtered['avg_inventory'].replace(0, 0.001)
 else:
     st.warning("Cannot calculate waste metrics - missing required inventory columns")
-    # Add placeholder columns to avoid errors
     df_filtered['waste'] = 0
     df_filtered['waste_rate'] = 0
     df_filtered['avg_inventory'] = 0
     df_filtered['inventory_turnover'] = 0
 
-# Calculate other metrics (with fallbacks for missing columns)
-if 'Capacity' in df_filtered.columns:
-    df_filtered['capacity_utilization'] = df_filtered['Production'] / df_filtered['Capacity'].replace(0, 0.001)
+# Calculate other metrics
+if 'capacity' in df_filtered.columns:
+    df_filtered['capacity_utilization'] = df_filtered['production'] / df_filtered['capacity'].replace(0, 0.001)
 else:
     df_filtered['capacity_utilization'] = 0
 
-if all(col in df_filtered.columns for col in ['Shipment value (thousand baht)', 'Total']):
-    df_filtered['value_per_unit'] = df_filtered['Shipment value (thousand baht)'] / df_filtered['Total'].replace(0, 0.001)
+if all(col in df_filtered.columns for col in ['shipment_value_thousand_baht', 'total']):
+    df_filtered['value_per_unit'] = df_filtered['shipment_value_thousand_baht'] / df_filtered['total'].replace(0, 0.001)
     df_filtered['waste_value'] = df_filtered['waste'] * df_filtered['value_per_unit']
 else:
     df_filtered['value_per_unit'] = 0
@@ -484,7 +568,7 @@ with tab5:
         fig = px.line(waste_value_by_season, x='Month', y='waste_value',
                       title="Average Monthly Waste Value (Seasonal Pattern)")
         st.plotly_chart(fig, use_container_width=True)
-
+        
 # Add summary and recommendations
 if has_all_waste_cols and not df_filtered.empty:
     st.markdown("---")
@@ -528,7 +612,7 @@ if has_all_waste_cols and not df_filtered.empty:
         - Develop strategies to redirect potential waste to alternative markets
         - Enhance demand forecasting to reduce production-demand mismatch
         """)
-
+        
 # Data download option
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Download Results")
@@ -539,12 +623,13 @@ st.sidebar.download_button(
     mime="text/csv"
 )
 
-# Installation instructions if statsmodels is missing
-if not HAS_STATSMODELS:
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### Install Additional Package")
-    st.sidebar.code("pip install statsmodels")
-    st.sidebar.info("Install statsmodels to enable trendline functionality in charts")
+# Reset button
+if st.sidebar.button("Reset Data & Mapping"):
+    for key in ['df_processed', 'df_raw', 'mapping_complete', 'mapping_needed', 'column_mapping']:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.rerun()
+
 
 
 
