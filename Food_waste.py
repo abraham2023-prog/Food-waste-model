@@ -235,8 +235,7 @@ with tab3:
             'month_end_inventory': 'mean'
         }).reset_index()
         
-        fig = px.line(inventory_by_month, x='Month', y='Begin month
-inventory', color='Product',
+        fig = px.line(inventory_by_month, x='Month', y='Begin month inventory', color='Product',
                       title="Average Beginning Inventory by Month")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -392,5 +391,6 @@ st.sidebar.download_button(
     file_name="food_waste_analysis.csv",
     mime="text/csv"
 )
+
 
 
