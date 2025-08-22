@@ -211,7 +211,7 @@ df_filtered = df[
 ]
 
 # Calculate waste metrics
-df_filtered['waste'] = (df_filtered['Begin month inventory'] + df_filtered['Production']) - (df_filtered['Domestic'] + df_filtered['Export'] + df_filtered['begin_inventory'])
+df_filtered['waste'] = (df_filtered['Begin month inventory'] + df_filtered['Production']) - (df_filtered['Domestic'] + df_filtered['Export'] + df_filtered['month-end inventory'])
 df_filtered['waste_rate'] = df_filtered['waste'] / df_filtered['Production']
 df_filtered['avg_inventory'] = (df_filtered['Begin month inventory'] + df_filtered['Month-end inventory']) / 2
 df_filtered['inventory_turnover'] = df_filtered['Domestic'] / df_filtered['avg_inventory']
@@ -512,6 +512,7 @@ if not HAS_STATSMODELS:
     st.sidebar.markdown("### Install Additional Package")
     st.sidebar.code("pip install statsmodels")
     st.sidebar.info("Install statsmodels to enable trendline functionality in charts")
+
 
 
 
