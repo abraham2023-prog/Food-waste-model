@@ -52,18 +52,18 @@ def generate_sample_data():
                 capacity = np.random.randint(5000, 10000)
                 
                 data.append({
-                    "product": product,
-                    "unit": unit,
-                    "year": year,
-                    "month": month,
-                    "begin_month_inventory": begin_inventory,
-                    "production": production,
-                    "domestic": domestic,
-                    "export": export,
-                    "total": total,
-                    "shipment_value_thousand_baht": shipment_value,
-                    "month_end_inventory": end_inventory,
-                    "capacity": capacity
+                    "Product": product,
+                    "Unit": unit,
+                    "Year": year,
+                    "Month": month,
+                    "Begin_month_inventory": begin_inventory,
+                    "Production": production,
+                    "Domestic": domestic,
+                    "Export": export,
+                    "Total": total,
+                    "Shipment_value_thousand_baht": shipment_value,
+                    "Month_end_inventory": end_inventory,
+                    "Capacity": capacity
                 })
     
     return pd.DataFrame(data)
@@ -391,3 +391,4 @@ st.sidebar.download_button(
     file_name="food_waste_analysis.csv",
     mime="text/csv"
 )
+
