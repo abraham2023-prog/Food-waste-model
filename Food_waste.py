@@ -145,6 +145,27 @@ with st.sidebar:
     st.subheader("Upload Data")
     uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
+    # New line for cleaning
+    if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    
+    # 1️⃣ Clean column names
+    df.columns = df.columns.str.replace('\n', ' ').str.strip()
+    
+    # 2️⃣ Remove commas and convert numeric columns to float
+    numeric_cols = [
+        'Begin month inventory', 'Production', 'Domestic', 'Export',
+        'Total', 'Shipment value (thousand baht)', 'Month-end inventory', 'Capacity'
+    ]
+    
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.replace(',', '').astype(float)
+    
+    st.success("Data uploaded, cleaned, and converted successfully!")
+    
+# Existing part
+
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
         st.success("Data uploaded successfully!")
@@ -478,6 +499,7 @@ if not HAS_STATSMODELS:
     st.sidebar.markdown("### Install Additional Package")
     st.sidebar.code("pip install statsmodels")
     st.sidebar.info("Install statsmodels to enable trendline functionality in charts")
+
 
 
 
