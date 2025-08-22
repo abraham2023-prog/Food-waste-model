@@ -52,18 +52,18 @@ def generate_sample_data():
                 capacity = np.random.randint(5000, 10000)
 
                 data.append({
-                    "product": product,
-                    "unit": unit,
-                    "year": year,
-                    "month": month,
-                    "begin_month_inventory": begin_inventory,
-                    "production": production,
-                    "domestic": domestic,
-                    "export": export,
-                    "total": total,
-                    "shipment_value_thousand_baht": shipment_value,
-                    "month_end_inventory": end_inventory,
-                    "capacity": capacity
+                    "Product": product,
+                    "Unit": unit,
+                    "Year": year,
+                    "Month": month,
+                    "Begin month inventory": begin_inventory,
+                    "Production": production,
+                    "Domestic": domestic,
+                    "Export": export,
+                    "Total": total,
+                    "Shipment value (thousand baht)": shipment_value,
+                    "Month-end inventory": end_inventory,
+                    "Capacity": capacity
                 })
 
     return pd.DataFrame(data)
@@ -85,15 +85,15 @@ with st.sidebar:
     st.subheader("Analysis Parameters")
     selected_products = st.multiselect(
         "Select Products to Analyze",
-        options=df['product'].unique(),
-        default=df['product'].unique()[:3]
+        options=df['Product'].unique(),
+        default=df['Product'].unique()[:3]
     )
 
     year_range = st.slider(
         "Select Year Range",
-        min_value=int(df['year'].min()),
-        max_value=int(df['year'].max()),
-        value=(int(df['year'].min()), int(df['year'].max()))
+        min_value=int(df['Year'].min()),
+        max_value=int(df['Year'].max()),
+        value=(int(df['Year'].min()), int(df['Year'].max()))
     )
 
     st.subheader("Waste Calculation")
@@ -101,18 +101,18 @@ with st.sidebar:
 
 # Filter data based on selections
 df_filtered = df[
-    (df['product'].isin(selected_products)) &
-    (df['year'] >= year_range[0]) &
-    (df['year'] <= year_range[1])
+    (df['Product'].isin(selected_products)) &
+    (df['Year'] >= year_range[0]) &
+    (df['Year'] <= year_range[1])
 ]
 
 # Calculate waste metrics
-df_filtered['waste'] = (df_filtered['begin_month_inventory'] + df_filtered['production']) - (df_filtered['domestic'] + df_filtered['export'] + df_filtered['month_end_inventory'])
-df_filtered['waste_rate'] = df_filtered['waste'] / df_filtered['production']
-df_filtered['avg_inventory'] = (df_filtered['begin_month_inventory'] + df_filtered['month_end_inventory']) / 2
-df_filtered['inventory_turnover'] = df_filtered['domestic'] / df_filtered['avg_inventory']
-df_filtered['capacity_utilization'] = df_filtered['production'] / df_filtered['capacity']
-df_filtered['value_per_unit'] = df_filtered['shipment_value_thousand_baht'] / df_filtered['total']
+df_filtered['waste'] = (df_filtered['Begin month inventory'] + df_filtered['Production']) - (df_filtered['Domestic'] + df_filtered['Export'] + df_filtered['Month-end inventory'])
+df_filtered['waste_rate'] = df_filtered['waste'] / df_filtered['Production']
+df_filtered['avg_inventory'] = (df_filtered['Begin month inventory'] + df_filtered['Month-end inventory']) / 2
+df_filtered['inventory_turnover'] = df_filtered['Domestic'] / df_filtered['avg_inventory']
+df_filtered['capacity_utilization'] = df_filtered['Production'] / df_filtered['Capacity']
+df_filtered['value_per_unit'] = df_filtered['Shipment value (thousand baht)'] / df_filtered['Total']
 df_filtered['waste_value'] = df_filtered['waste'] * df_filtered['value_per_unit']
 
 # Create tabs for different analyses
@@ -129,7 +129,7 @@ with tab1:
 
     # Calculate overall metrics
     total_waste = df_filtered['waste'].sum()
-    total_production = df_filtered['production'].sum()
+    total_production = df_filtered['Production'].sum()
     overall_waste_rate = total_waste / total_production
     total_waste_value = df_filtered['waste_value'].sum()
     avg_turnover = df_filtered['inventory_turnover'].mean()
@@ -146,8 +146,8 @@ with tab1:
 
     # Time series of waste
     st.markdown("#### Waste Trends Over Time")
-    waste_by_time = df_filtered.groupby(['year', 'month']).agg({'waste': 'sum'}).reset_index()
-    waste_by_time['date'] = pd.to_datetime(waste_by_time['year'].astype(str) + '-' + waste_by_time['month'].astype(str))
+    waste_by_time = df_filtered.groupby(['Year', 'Month']).agg({'waste': 'sum'}).reset_index()
+    waste_by_time['date'] = pd.to_datetime(waste_by_time['Year'].astype(str) + '-' + waste_by_time['Month'].astype(str))
 
     fig = px.line(waste_by_time, x='date', y='waste',
                   title="Total Waste Over Time")
@@ -155,21 +155,21 @@ with tab1:
 
     # Waste by product
     st.markdown("#### Waste by Product")
-    waste_by_product = df_filtered.groupby('product').agg({
+    waste_by_product = df_filtered.groupby('Product').agg({
         'waste': 'sum',
-        'production': 'sum',
+        'Production': 'sum',
         'waste_value': 'sum'
     }).reset_index()
-    waste_by_product['waste_rate'] = waste_by_product['waste'] / waste_by_product['production']
+    waste_by_product['waste_rate'] = waste_by_product['waste'] / waste_by_product['Production']
 
     col1, col2 = st.columns(2)
     with col1:
-        fig = px.bar(waste_by_product, x='product', y='waste',
+        fig = px.bar(waste_by_product, x='Product', y='waste',
                      title="Total Waste by Product")
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
-        fig = px.bar(waste_by_product, x='product', y='waste_rate',
+        fig = px.bar(waste_by_product, x='Product', y='waste_rate',
                      title="Waste Rate by Product")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -178,23 +178,23 @@ with tab2:
 
     # Seasonal waste patterns
     st.markdown("#### Seasonal Waste Patterns")
-    waste_by_month = df_filtered.groupby(['month', 'product']).agg({'waste': 'mean'}).reset_index()
+    waste_by_month = df_filtered.groupby(['Month', 'Product']).agg({'waste': 'mean'}).reset_index()
 
-    fig = px.line(waste_by_month, x='month', y='waste', color='product',
+    fig = px.line(waste_by_month, x='Month', y='waste', color='Product',
                   title="Average Waste by Month")
     st.plotly_chart(fig, use_container_width=True)
 
     # Waste distribution
     st.markdown("#### Waste Distribution by Product")
-    fig = px.box(df_filtered, x='product', y='waste',
+    fig = px.box(df_filtered, x='Product', y='waste',
                  title="Distribution of Waste Amounts by Product")
     st.plotly_chart(fig, use_container_width=True)
 
     # Yearly comparison
     st.markdown("#### Yearly Waste Comparison")
-    waste_by_year = df_filtered.groupby(['year', 'product']).agg({'waste': 'sum'}).reset_index()
+    waste_by_year = df_filtered.groupby(['Year', 'Product']).agg({'waste': 'sum'}).reset_index()
 
-    fig = px.bar(waste_by_year, x='year', y='waste', color='product',
+    fig = px.bar(waste_by_year, x='Year', y='waste', color='Product',
                  barmode='group', title="Total Waste by Year and Product")
     st.plotly_chart(fig, use_container_width=True)
 
@@ -205,37 +205,37 @@ with tab3:
 
     with col1:
         st.markdown("##### Inventory Turnover by Product")
-        turnover_by_product = df_filtered.groupby('product').agg({
+        turnover_by_product = df_filtered.groupby('Product').agg({
             'inventory_turnover': 'mean'
         }).reset_index().sort_values('inventory_turnover', ascending=False)
 
-        fig = px.bar(turnover_by_product, x='product', y='inventory_turnover',
+        fig = px.bar(turnover_by_product, x='Product', y='inventory_turnover',
                      title="Average Inventory Turnover Ratio")
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("##### Days of Supply")
-        df_filtered['days_of_supply'] = (df_filtered['month_end_inventory'] / df_filtered['domestic']) * 30
-        days_supply_by_product = df_filtered.groupby('product').agg({
+        df_filtered['days_of_supply'] = (df_filtered['Month-end inventory'] / df_filtered['Domestic']) * 30
+        days_supply_by_product = df_filtered.groupby('Product').agg({
             'days_of_supply': 'mean'
         }).reset_index().sort_values('days_of_supply', ascending=False)
 
-        fig = px.bar(days_supply_by_product, x='product', y='days_of_supply',
+        fig = px.bar(days_supply_by_product, x='Product', y='days_of_supply',
                      title="Average Days of Supply")
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
         st.markdown("##### Inventory vs Waste Relationship")
-        fig = px.scatter(df_filtered, x='avg_inventory', y='waste', color='product',
+        fig = px.scatter(df_filtered, x='avg_inventory', y='waste', color='Product',
                          trendline="ols", title="Relationship Between Inventory Levels and Waste")
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("##### Monthly Inventory Patterns")
-        inventory_by_month = df_filtered.groupby(['month', 'product']).agg({
-            'begin_month_inventory': 'mean',
-            'month_end_inventory': 'mean'
+        inventory_by_month = df_filtered.groupby(['Month', 'Product']).agg({
+            'Begin month inventory': 'mean',
+            'Month-end inventory': 'mean'
         }).reset_index()
 
-        fig = px.line(inventory_by_month, x='month', y='begin_month_inventory', color='product',
+        fig = px.line(inventory_by_month, x='Month', y='Begin month inventory', color='Product',
                       title="Average Beginning Inventory by Month")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -246,48 +246,48 @@ with tab4:
 
     with col1:
         st.markdown("##### Production vs Domestic Sales")
-        prod_vs_domestic = df_filtered.groupby('product').agg({
-            'production': 'sum',
-            'domestic': 'sum'
+        prod_vs_domestic = df_filtered.groupby('Product').agg({
+            'Production': 'sum',
+            'Domestic': 'sum'
         }).reset_index()
 
         fig = go.Figure()
         fig.add_trace(go.Bar(
-            x=prod_vs_domestic['product'],
-            y=prod_vs_domestic['production'],
+            x=prod_vs_domestic['Product'],
+            y=prod_vs_domestic['Production'],
             name='Production'
         ))
         fig.add_trace(go.Bar(
-            x=prod_vs_domestic['product'],
-            y=prod_vs_domestic['domestic'],
+            x=prod_vs_domestic['Product'],
+            y=prod_vs_domestic['Domestic'],
             name='Domestic Sales'
         ))
         fig.update_layout(barmode='group', title="Total Production vs Domestic Sales")
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("##### Capacity Utilization")
-        utilization_by_product = df_filtered.groupby('product').agg({
+        utilization_by_product = df_filtered.groupby('Product').agg({
             'capacity_utilization': 'mean'
         }).reset_index()
 
-        fig = px.bar(utilization_by_product, x='product', y='capacity_utilization',
+        fig = px.bar(utilization_by_product, x='Product', y='capacity_utilization',
                      title="Average Capacity Utilization by Product")
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
         st.markdown("##### Production-Demand Mismatch")
-        df_filtered['production_demand_gap'] = df_filtered['production'] - df_filtered['domestic']
+        df_filtered['production_demand_gap'] = df_filtered['Production'] - df_filtered['Domestic']
 
-        gap_by_product = df_filtered.groupby('product').agg({
+        gap_by_product = df_filtered.groupby('Product').agg({
             'production_demand_gap': 'mean'
         }).reset_index()
 
-        fig = px.bar(gap_by_product, x='product', y='production_demand_gap',
+        fig = px.bar(gap_by_product, x='Product', y='production_demand_gap',
                      title="Average Production-Demand Gap")
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("##### Production vs Waste Correlation")
-        fig = px.scatter(df_filtered, x='production', y='waste', color='product',
+        fig = px.scatter(df_filtered, x='Production', y='waste', color='Product',
                          trendline="ols", title="Correlation Between Production Volume and Waste")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -298,19 +298,19 @@ with tab5:
 
     with col1:
         st.markdown("##### Value of Waste by Product")
-        waste_value_by_product = df_filtered.groupby('product').agg({
+        waste_value_by_product = df_filtered.groupby('Product').agg({
             'waste_value': 'sum'
         }).reset_index().sort_values('waste_value', ascending=False)
 
-        fig = px.bar(waste_value_by_product, x='product', y='waste_value',
+        fig = px.bar(waste_value_by_product, x='Product', y='waste_value',
                      title="Total Value of Waste by Product (Thousand Baht)")
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("##### Monthly Waste Value Trends")
-        waste_value_by_month = df_filtered.groupby(['year', 'month']).agg({
+        waste_value_by_month = df_filtered.groupby(['Year', 'Month']).agg({
             'waste_value': 'sum'
         }).reset_index()
-        waste_value_by_month['date'] = pd.to_datetime(waste_value_by_month['year'].astype(str) + '-' + waste_value_by_month['month'].astype(str))
+        waste_value_by_month['date'] = pd.to_datetime(waste_value_by_month['Year'].astype(str) + '-' + waste_value_by_month['Month'].astype(str))
 
         fig = px.line(waste_value_by_month, x='date', y='waste_value',
                       title="Trends in Waste Value Over Time")
@@ -318,22 +318,22 @@ with tab5:
 
     with col2:
         st.markdown("##### Waste as Percentage of Shipment Value")
-        total_values = df_filtered.groupby('product').agg({
-            'shipment_value_thousand_baht': 'sum',
+        total_values = df_filtered.groupby('Product').agg({
+            'Shipment value (thousand baht)': 'sum',
             'waste_value': 'sum'
         }).reset_index()
-        total_values['waste_pct_of_value'] = total_values['waste_value'] / total_values['shipment_value_thousand_baht'] * 100
+        total_values['waste_pct_of_value'] = total_values['waste_value'] / total_values['Shipment value (thousand baht)'] * 100
 
-        fig = px.bar(total_values, x='product', y='waste_pct_of_value',
+        fig = px.bar(total_values, x='Product', y='waste_pct_of_value',
                      title="Waste Value as Percentage of Total Shipment Value")
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("##### Cost of Waste by Season")
-        waste_value_by_season = df_filtered.groupby('month').agg({
+        waste_value_by_season = df_filtered.groupby('Month').agg({
             'waste_value': 'mean'
         }).reset_index()
 
-        fig = px.line(waste_value_by_season, x='month', y='waste_value',
+        fig = px.line(waste_value_by_season, x='Month', y='waste_value',
                       title="Average Monthly Waste Value (Seasonal Pattern)")
         st.plotly_chart(fig, use_container_width=True)
 
@@ -344,21 +344,21 @@ st.markdown('<p class="section-header">📋 Key Insights and Recommendations</p>
 # Generate insights based on data
 if not df_filtered.empty:
     # Find product with highest waste rate
-    waste_by_product = df_filtered.groupby('product').agg({
+    waste_by_product = df_filtered.groupby('Product').agg({
         'waste': 'sum',
-        'production': 'sum'
+        'Production': 'sum'
     }).reset_index()
-    waste_by_product['waste_rate'] = waste_by_product['waste'] / waste_by_product['production']
+    waste_by_product['waste_rate'] = waste_by_product['waste'] / waste_by_product['Production']
 
     highest_waste_product = waste_by_product.loc[waste_by_product['waste_rate'].idxmax()]
     lowest_waste_product = waste_by_product.loc[waste_by_product['waste_rate'].idxmin()]
 
     # Find month with highest waste
-    waste_by_month = df_filtered.groupby('month').agg({'waste': 'mean'}).reset_index()
+    waste_by_month = df_filtered.groupby('Month').agg({'waste': 'mean'}).reset_index()
     highest_waste_month = waste_by_month.loc[waste_by_month['waste'].idxmax()]
 
     # Inventory turnover analysis
-    turnover_by_product = df_filtered.groupby('product').agg({'inventory_turnover': 'mean'}).reset_index()
+    turnover_by_product = df_filtered.groupby('Product').agg({'inventory_turnover': 'mean'}).reset_index()
     lowest_turnover = turnover_by_product.loc[turnover_by_product['inventory_turnover'].idxmin()]
 
     col1, col2 = st.columns(2)
@@ -366,10 +366,10 @@ if not df_filtered.empty:
     with col1:
         st.markdown("#### Key Findings")
         st.markdown(f"""
-        - **{highest_waste_product['product']}** has the highest waste rate at **{highest_waste_product['waste_rate']:.2%}**
-        - **{lowest_waste_product['product']}** has the lowest waste rate at **{lowest_waste_product['waste_rate']:.2%}**
-        - Month **{int(highest_waste_month['month'])}** typically has the highest waste levels
-        - **{lowest_turnover['product']}** has the slowest inventory turnover
+        - **{highest_waste_product['Product']}** has the highest waste rate at **{highest_waste_product['waste_rate']:.2%}**
+        - **{lowest_waste_product['Product']}** has the lowest waste rate at **{lowest_waste_product['waste_rate']:.2%}**
+        - Month **{int(highest_waste_month['Month'])}** typically has the highest waste levels
+        - **{lowest_turnover['Product']}** has the slowest inventory turnover
         """)
 
     with col2:
@@ -391,6 +391,7 @@ st.sidebar.download_button(
     file_name="food_waste_analysis.csv",
     mime="text/csv"
 )
+
 
 
 
