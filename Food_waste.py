@@ -27,6 +27,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Check if statsmodels is available for trendlines
+try:
+    import statsmodels.api as sm
+    HAS_STATSMODELS = True
+except ImportError:
+    HAS_STATSMODELS = False
+    st.sidebar.warning("Statsmodels not installed. Trendlines will be disabled.")
+
 # App title
 st.markdown('<p class="main-header">🍎 Food Waste Analysis Dashboard</p>', unsafe_allow_html=True)
 st.markdown("Analyze food waste patterns from production and inventory data")
@@ -225,8 +233,13 @@ with tab3:
 
     with col2:
         st.markdown("##### Inventory vs Waste Relationship")
-        fig = px.scatter(df_filtered, x='avg_inventory', y='waste', color='Product',
-                         trendline="ols", title="Relationship Between Inventory Levels and Waste")
+        # Only add trendline if statsmodels is available
+        if HAS_STATSMODELS:
+            fig = px.scatter(df_filtered, x='avg_inventory', y='waste', color='Product',
+                             trendline="ols", title="Relationship Between Inventory Levels and Waste")
+        else:
+            fig = px.scatter(df_filtered, x='avg_inventory', y='waste', color='Product',
+                             title="Relationship Between Inventory Levels and Waste (No Trendline - Install statsmodels)")
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("##### Monthly Inventory Patterns")
@@ -287,8 +300,13 @@ with tab4:
         st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("##### Production vs Waste Correlation")
-        fig = px.scatter(df_filtered, x='Production', y='waste', color='Product',
-                         trendline="ols", title="Correlation Between Production Volume and Waste")
+        # Only add trendline if statsmodels is available
+        if HAS_STATSMODELS:
+            fig = px.scatter(df_filtered, x='Production', y='waste', color='Product',
+                             trendline="ols", title="Correlation Between Production Volume and Waste")
+        else:
+            fig = px.scatter(df_filtered, x='Production', y='waste', color='Product',
+                             title="Correlation Between Production Volume and Waste (No Trendline - Install statsmodels)")
         st.plotly_chart(fig, use_container_width=True)
 
 with tab5:
@@ -391,6 +409,14 @@ st.sidebar.download_button(
     file_name="food_waste_analysis.csv",
     mime="text/csv"
 )
+
+# Installation instructions if statsmodels is missing
+if not HAS_STATSMODELS:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### Install Additional Package")
+    st.sidebar.code("pip install statsmodels")
+    st.sidebar.info("Install statsmodels to enable trendline functionality in charts")
+
 
 
 
