@@ -138,33 +138,44 @@ def generate_sample_data():
     return pd.DataFrame(data)
 
 
-# Load data
+# Load and clean data
 with st.sidebar:
     st.header("Data Configuration")
     st.subheader("Upload Data")
     uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
-    if uploaded_file is not None:
-        # 1️⃣ Read CSV once
-        df = pd.read_csv(uploaded_file)
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
 
-        # 2️⃣ Clean column names
-        df.columns = df.columns.str.replace('\n', ' ').str.strip()
+    # 1️⃣ Clean column names
+    df.columns = df.columns.str.strip().str.replace('\n', ' ').str.replace('\r', '')
+    
+    # Optional: lower-case all column names for consistency
+    df.columns = [col.lower() for col in df.columns]
 
-        # 3️⃣ Remove commas and convert numeric columns
-        numeric_cols = [
-            'Begin month inventory', 'Production', 'Domestic', 'Export',
-            'Total', 'Shipment value (thousand baht)', 'Month-end inventory', 'Capacity'
-        ]
+    # 2️⃣ List of expected numeric columns
+    numeric_cols = [
+        'begin month inventory', 'production', 'domestic', 'export',
+        'total', 'shipment value (thousand baht)', 'month-end inventory', 'capacity'
+    ]
+    
+    # 3️⃣ Remove commas and convert to float
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.replace(',', '').astype(float)
 
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = df[col].astype(str).str.replace(',', '').astype(float)
-
-        st.success("Data uploaded, cleaned, and converted successfully!")
+    # 4️⃣ Check for missing required columns
+    required_cols = ['begin month inventory', 'production', 'domestic', 'export', 'month-end inventory']
+    missing_cols = [c for c in required_cols if c not in df.columns]
+    if missing_cols:
+        st.error(f"Missing columns in dataset: {missing_cols}")
     else:
-        st.info("Using sample data for demonstration")
-        df = generate_sample_data()
+        st.success("Data uploaded, cleaned, and converted successfully!")
+
+else:
+    st.info("Using sample data for demonstration")
+    df = generate_sample_data()
+
     
 # # Existing part
 
@@ -501,6 +512,7 @@ if not HAS_STATSMODELS:
     st.sidebar.markdown("### Install Additional Package")
     st.sidebar.code("pip install statsmodels")
     st.sidebar.info("Install statsmodels to enable trendline functionality in charts")
+
 
 
 
