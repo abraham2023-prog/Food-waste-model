@@ -41,23 +41,84 @@ st.markdown("Analyze food waste patterns from production and inventory data")
 
 # Generate sample data if not uploaded
 def generate_sample_data():
-    products = ["Tomatoes", "Potatoes", "Rice", "Chicken", "Milk", "Apples"]
-    units = ["tons", "tons", "tons", "tons", "liters", "tons"]
-    years = [2020, 2021, 2022]
+    # Raw product list from your dataset
+    raw_products = [
+        'Ready made pig feed', 'Ready made chicken feed', 'Ready made fish feed',
+        'Ready made shrimp feed', 'Premix', 'Dried fruits and vegetables',
+        'Ice cream', 'Yogurt', 'Soy milk', 'Tapioca flour', 'Cake',
+        'Other baked goods (pizza donuts sandwich bread)', 'Wafer biscuit',
+        'Cookie', 'Toasted bread/Cracker/Biscuit',
+        'Other crispy snacks (Corn chips prawn crackers etc)', 'Molasses',
+        'Instant noodles', 'Table condiments',
+        'Soy sauce fermented soybean paste light soy sauce ',
+        'Monosodium glutamate', 'Ready to cook meals (others)', 'Pet feed',
+        'Frozen and chilled pork', 'Frozen and chilled chicken meat',
+        'ham', 'bacon', 'sausage', 'seasoned chicken meat', 'frozen fish',
+        'minced fish meat', 'frozen shrimp', 'frozen squid', 'canned tuna',
+        'canned sardines', 'frozen fruits and vegetables', 'canned pineapple',
+        'other canned fruits', 'canned sweet corn', 'canned pickles',
+        'dried fruits & vegetables', 'coconut milk', 'ice cream',
+        'tapioca starch', 'cake', 'other baked goods', 'cookie',
+        'biscuits/crackers', 'other crispy baked snacks', 'raw sugar',
+        'white sugar', 'pure white sugar', 'molasses', 'sweep/suck',
+        'instant noodles', 'Frozen prepared food',
+        'small condiments or seasoning dispensers',
+        'Soy sauce fermented soybean paste dark soy sauce',
+        'Ready made pet feed', 'Ready-made pig feed', 'Ready made duck feed',
+        'ready made feed for other livestock'
+    ]
+
+    # Normalize product names (mapping variations to consistent labels)
+    product_mapping = {
+        "ice cream": "Ice Cream",
+        "Ice cream": "Ice Cream",
+        "cake": "Cake",
+        "Cake": "Cake",
+        "cookie": "Cookie",
+        "Cookie": "Cookie",
+        "dried fruits & vegetables": "Dried Fruits and Vegetables",
+        "Dried fruits and vegetables": "Dried Fruits and Vegetables",
+        "other baked goods": "Other Baked Goods",
+        "Other baked goods (pizza donuts sandwich bread)": "Other Baked Goods",
+        "biscuits/crackers": "Biscuits/Crackers",
+        "Toasted bread/Cracker/Biscuit": "Biscuits/Crackers",
+        "other crispy baked snacks": "Other Crispy Snacks",
+        "Other crispy snacks (Corn chips prawn crackers etc)": "Other Crispy Snacks",
+        "molasses": "Molasses",
+        "Molasses": "Molasses",
+        "instant noodles": "Instant Noodles",
+        "Instant noodles": "Instant Noodles",
+    }
+
+    # Apply normalization
+    products = [product_mapping.get(p, p) for p in raw_products]
+    products = sorted(set(products))  # remove duplicates & sort alphabetically
+
+    # Assign units
+    units = []
+    for p in products:
+        if any(x in p.lower() for x in ["milk", "yogurt"]):
+            units.append("liter")
+        elif "sauce" in p.lower() or "soy" in p.lower():
+            units.append("Thousand liter")
+        else:
+            units.append("ton")
+
+    years = [2020, 2021, 2022, 2023]
     months = list(range(1, 13))
 
     data = []
     for product, unit in zip(products, units):
         for year in years:
             for month in months:
-                begin_inventory = np.random.randint(100, 500)
-                production = np.random.randint(1000, 5000)
-                domestic = np.random.randint(800, 4500)
-                export = np.random.randint(100, 800)
+                begin_inventory = np.random.randint(50, 500)
+                production = np.random.randint(500, 5000)
+                domestic = np.random.randint(400, 4500)
+                export = np.random.randint(50, 800)
                 total = domestic + export
-                shipment_value = np.random.randint(50000, 250000)
-                end_inventory = np.random.randint(100, 500)
-                capacity = np.random.randint(5000, 10000)
+                shipment_value = np.random.randint(20000, 250000)
+                end_inventory = np.random.randint(50, 500)
+                capacity = np.random.randint(3000, 10000)
 
                 data.append({
                     "Product": product,
@@ -75,6 +136,7 @@ def generate_sample_data():
                 })
 
     return pd.DataFrame(data)
+
 
 # Load data
 with st.sidebar:
@@ -416,6 +478,7 @@ if not HAS_STATSMODELS:
     st.sidebar.markdown("### Install Additional Package")
     st.sidebar.code("pip install statsmodels")
     st.sidebar.info("Install statsmodels to enable trendline functionality in charts")
+
 
 
 
