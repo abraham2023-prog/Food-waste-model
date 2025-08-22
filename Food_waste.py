@@ -67,75 +67,6 @@ def generate_sample_data():
         'ready made feed for other livestock'
     ]
 
-    # Normalize product names (mapping variations to consistent labels)
-    product_mapping = {
-        "ice cream": "Ice Cream",
-        "Ice cream": "Ice Cream",
-        "cake": "Cake",
-        "Cake": "Cake",
-        "cookie": "Cookie",
-        "Cookie": "Cookie",
-        "dried fruits & vegetables": "Dried Fruits and Vegetables",
-        "Dried fruits and vegetables": "Dried Fruits and Vegetables",
-        "other baked goods": "Other Baked Goods",
-        "Other baked goods (pizza donuts sandwich bread)": "Other Baked Goods",
-        "biscuits/crackers": "Biscuits/Crackers",
-        "Toasted bread/Cracker/Biscuit": "Biscuits/Crackers",
-        "other crispy baked snacks": "Other Crispy Snacks",
-        "Other crispy snacks (Corn chips prawn crackers etc)": "Other Crispy Snacks",
-        "molasses": "Molasses",
-        "Molasses": "Molasses",
-        "instant noodles": "Instant Noodles",
-        "Instant noodles": "Instant Noodles",
-    }
-
-    # Apply normalization
-    products = [product_mapping.get(p, p) for p in raw_products]
-    products = sorted(set(products))  # remove duplicates & sort alphabetically
-
-    # Assign units
-    units = []
-    for p in products:
-        if any(x in p.lower() for x in ["milk", "yogurt"]):
-            units.append("liter")
-        elif "sauce" in p.lower() or "soy" in p.lower():
-            units.append("Thousand liter")
-        else:
-            units.append("ton")
-
-    years = [2020, 2021, 2022, 2023]
-    months = list(range(1, 13))
-
-    data = []
-    for product, unit in zip(products, units):
-        for year in years:
-            for month in months:
-                begin_inventory = np.random.randint(50, 500)
-                production = np.random.randint(500, 5000)
-                domestic = np.random.randint(400, 4500)
-                export = np.random.randint(50, 800)
-                total = domestic + export
-                shipment_value = np.random.randint(20000, 250000)
-                end_inventory = np.random.randint(50, 500)
-                capacity = np.random.randint(3000, 10000)
-
-                data.append({
-                    "Product": product,
-                    "Unit": unit,
-                    "Year": year,
-                    "Month": month,
-                    "Begin month inventory": begin_inventory,
-                    "Production": production,
-                    "Domestic": domestic,
-                    "Export": export,
-                    "Total": total,
-                    "Shipment value (thousand baht)": shipment_value,
-                    "Month-end inventory": end_inventory,
-                    "Capacity": capacity
-                })
-
-    return pd.DataFrame(data)
-
 # Function to normalize column names
 def normalize_column_names(df):
     """Normalize column names to handle different naming conventions"""
@@ -180,45 +111,86 @@ with st.sidebar:
     st.subheader("Upload Data")
     uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
+# Initialize session state for column mapping
+if 'column_mapping' not in st.session_state:
+    st.session_state.column_mapping = {}
+
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     
     # Show original column names for debugging
-    st.sidebar.info("Original columns in your dataset:")
+    st.sidebar.info("Columns in your dataset:")
     for col in df.columns:
         st.sidebar.write(f"- '{col}'")
     
     # Normalize column names
     df = normalize_column_names(df)
     
-    st.sidebar.info("Normalized columns:")
+    st.sidebar.info("After normalization:")
     for col in df.columns:
         st.sidebar.write(f"- '{col}'")
-    
-    # List of expected numeric columns
-    numeric_cols = [
-        'Begin month inventory', 'Production', 'Domestic', 'Export',
-        'Total', 'Shipment value (thousand baht)', 'Month-end inventory', 'Capacity'
-    ]
-    
-    # Remove commas and convert to float for available numeric columns
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = df[col].astype(str).str.replace(',', '').astype(float)
-        else:
-            st.sidebar.warning(f"Column '{col}' not found in dataset")
     
     # Check for missing required columns
     required_cols = ['Begin month inventory', 'Production', 'Domestic', 'Export', 'Month-end inventory']
     missing_cols = [c for c in required_cols if c not in df.columns]
     
     if missing_cols:
-        st.error(f"Missing required columns in dataset: {missing_cols}")
-        st.info("Please check if your dataset contains these columns with similar names")
-        # Stop execution if required columns are missing
+        st.warning(f"Missing required columns: {missing_cols}")
+        
+        # Allow manual column mapping
+        st.subheader("Column Mapping")
+        st.info("Please map your dataset columns to the required columns:")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Required Columns**")
+        with col2:
+            st.write("**Your Dataset Columns**")
+        
+        available_columns = df.columns.tolist()
+        
+        for required_col in missing_cols:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"{required_col}:")
+            with col2:
+                # Store mapping in session state
+                key = f"map_{required_col}"
+                if key not in st.session_state:
+                    st.session_state[key] = available_columns[0] if available_columns else ""
+                
+                selected_col = st.selectbox(
+                    f"Map to {required_col}",
+                    options=available_columns,
+                    key=key,
+                    label_visibility="collapsed"
+                )
+                st.session_state.column_mapping[required_col] = selected_col
+        
+        if st.button("Apply Column Mapping"):
+            # Apply the mapping
+            for required_col, dataset_col in st.session_state.column_mapping.items():
+                if required_col not in df.columns and dataset_col in df.columns:
+                    df[required_col] = df[dataset_col]
+                    st.success(f"Mapped '{dataset_col}' to '{required_col}'")
+            
+            # Refresh to show updated columns
+            st.rerun()
+        
         st.stop()
+    
     else:
-        st.success("Data uploaded, cleaned, and converted successfully!")
+        # Process numeric columns
+        numeric_cols = [
+            'Begin month inventory', 'Production', 'Domestic', 'Export',
+            'Total', 'Shipment value (thousand baht)', 'Month-end inventory', 'Capacity'
+        ]
+        
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.replace(',', '').astype(float)
+        
+        st.success("Data uploaded and processed successfully!")
 
 else:
     st.info("Using sample data for demonstration")
@@ -250,14 +222,36 @@ df_filtered = df[
     (df['Year'] <= year_range[1])
 ].copy()
 
-# Calculate waste metrics
-df_filtered['waste'] = (df_filtered['Begin month inventory'] + df_filtered['Production']) - (df_filtered['Domestic'] + df_filtered['Export'] + df_filtered['Month-end inventory'])
-df_filtered['waste_rate'] = df_filtered['waste'] / df_filtered['Production']
-df_filtered['avg_inventory'] = (df_filtered['Begin month inventory'] + df_filtered['Month-end inventory']) / 2
-df_filtered['inventory_turnover'] = df_filtered['Domestic'] / df_filtered['avg_inventory'].replace(0, 0.001)  # Avoid division by zero
-df_filtered['capacity_utilization'] = df_filtered['Production'] / df_filtered['Capacity'].replace(0, 0.001)  # Avoid division by zero
-df_filtered['value_per_unit'] = df_filtered['Shipment value (thousand baht)'] / df_filtered['Total'].replace(0, 0.001)  # Avoid division by zero
-df_filtered['waste_value'] = df_filtered['waste'] * df_filtered['value_per_unit']
+# Check if we have all required columns for waste calculation
+required_waste_cols = ['Begin month inventory', 'Production', 'Domestic', 'Export', 'Month-end inventory']
+has_all_waste_cols = all(col in df_filtered.columns for col in required_waste_cols)
+
+if has_all_waste_cols:
+    # Calculate waste metrics
+    df_filtered['waste'] = (df_filtered['Begin month inventory'] + df_filtered['Production']) - (df_filtered['Domestic'] + df_filtered['Export'] + df_filtered['Month-end inventory'])
+    df_filtered['waste_rate'] = df_filtered['waste'] / df_filtered['Production'].replace(0, 0.001)
+    df_filtered['avg_inventory'] = (df_filtered['Begin month inventory'] + df_filtered['Month-end inventory']) / 2
+    df_filtered['inventory_turnover'] = df_filtered['Domestic'] / df_filtered['avg_inventory'].replace(0, 0.001)
+else:
+    st.warning("Cannot calculate waste metrics - missing required inventory columns")
+    # Add placeholder columns to avoid errors
+    df_filtered['waste'] = 0
+    df_filtered['waste_rate'] = 0
+    df_filtered['avg_inventory'] = 0
+    df_filtered['inventory_turnover'] = 0
+
+# Calculate other metrics (with fallbacks for missing columns)
+if 'Capacity' in df_filtered.columns:
+    df_filtered['capacity_utilization'] = df_filtered['Production'] / df_filtered['Capacity'].replace(0, 0.001)
+else:
+    df_filtered['capacity_utilization'] = 0
+
+if all(col in df_filtered.columns for col in ['Shipment value (thousand baht)', 'Total']):
+    df_filtered['value_per_unit'] = df_filtered['Shipment value (thousand baht)'] / df_filtered['Total'].replace(0, 0.001)
+    df_filtered['waste_value'] = df_filtered['waste'] * df_filtered['value_per_unit']
+else:
+    df_filtered['value_per_unit'] = 0
+    df_filtered['waste_value'] = 0
 
 # Create tabs for different analyses
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -274,7 +268,7 @@ with tab1:
     # Calculate overall metrics
     total_waste = df_filtered['waste'].sum()
     total_production = df_filtered['Production'].sum()
-    overall_waste_rate = total_waste / total_production if total_production > 0 else 0
+    overall_waste_rate = total_waste / total_production
     total_waste_value = df_filtered['waste_value'].sum()
     avg_turnover = df_filtered['inventory_turnover'].mean()
 
@@ -304,7 +298,7 @@ with tab1:
         'Production': 'sum',
         'waste_value': 'sum'
     }).reset_index()
-    waste_by_product['waste_rate'] = waste_by_product['waste'] / waste_by_product['Production'].replace(0, 0.001)
+    waste_by_product['waste_rate'] = waste_by_product['waste'] / waste_by_product['Production']
 
     col1, col2 = st.columns(2)
     with col1:
@@ -317,15 +311,185 @@ with tab1:
                      title="Waste Rate by Product")
         st.plotly_chart(fig, use_container_width=True)
 
-# Continue with the rest of your tabs and visualizations...
-# [The rest of your tab2, tab3, tab4, tab5 code remains the same]
+with tab2:
+    st.markdown('<p class="section-header">📈 Waste Analysis</p>', unsafe_allow_html=True)
+
+    # Seasonal waste patterns
+    st.markdown("#### Seasonal Waste Patterns")
+    waste_by_month = df_filtered.groupby(['Month', 'Product']).agg({'waste': 'mean'}).reset_index()
+
+    fig = px.line(waste_by_month, x='Month', y='waste', color='Product',
+                  title="Average Waste by Month")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Waste distribution
+    st.markdown("#### Waste Distribution by Product")
+    fig = px.box(df_filtered, x='Product', y='waste',
+                 title="Distribution of Waste Amounts by Product")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Yearly comparison
+    st.markdown("#### Yearly Waste Comparison")
+    waste_by_year = df_filtered.groupby(['Year', 'Product']).agg({'waste': 'sum'}).reset_index()
+
+    fig = px.bar(waste_by_year, x='Year', y='waste', color='Product',
+                 barmode='group', title="Total Waste by Year and Product")
+    st.plotly_chart(fig, use_container_width=True)
+
+with tab3:
+    st.markdown('<p class="section-header">📦 Inventory Analysis</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("##### Inventory Turnover by Product")
+        turnover_by_product = df_filtered.groupby('Product').agg({
+            'inventory_turnover': 'mean'
+        }).reset_index().sort_values('inventory_turnover', ascending=False)
+
+        fig = px.bar(turnover_by_product, x='Product', y='inventory_turnover',
+                     title="Average Inventory Turnover Ratio")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("##### Days of Supply")
+        df_filtered['days_of_supply'] = (df_filtered['Month-end inventory'] / df_filtered['Domestic']) * 30
+        days_supply_by_product = df_filtered.groupby('Product').agg({
+            'days_of_supply': 'mean'
+        }).reset_index().sort_values('days_of_supply', ascending=False)
+
+        fig = px.bar(days_supply_by_product, x='Product', y='days_of_supply',
+                     title="Average Days of Supply")
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown("##### Inventory vs Waste Relationship")
+        # Only add trendline if statsmodels is available
+        if HAS_STATSMODELS:
+            fig = px.scatter(df_filtered, x='avg_inventory', y='waste', color='Product',
+                             trendline="ols", title="Relationship Between Inventory Levels and Waste")
+        else:
+            fig = px.scatter(df_filtered, x='avg_inventory', y='waste', color='Product',
+                             title="Relationship Between Inventory Levels and Waste (No Trendline - Install statsmodels)")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("##### Monthly Inventory Patterns")
+        inventory_by_month = df_filtered.groupby(['Month', 'Product']).agg({
+            'Begin month inventory': 'mean',
+            'Month-end inventory': 'mean'
+        }).reset_index()
+
+        fig = px.line(inventory_by_month, x='Month', y='Begin month inventory', color='Product',
+                      title="Average Beginning Inventory by Month")
+        st.plotly_chart(fig, use_container_width=True)
+
+with tab4:
+    st.markdown('<p class="section-header">⚖️ Production vs Demand Analysis</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("##### Production vs Domestic Sales")
+        prod_vs_domestic = df_filtered.groupby('Product').agg({
+            'Production': 'sum',
+            'Domestic': 'sum'
+        }).reset_index()
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=prod_vs_domestic['Product'],
+            y=prod_vs_domestic['Production'],
+            name='Production'
+        ))
+        fig.add_trace(go.Bar(
+            x=prod_vs_domestic['Product'],
+            y=prod_vs_domestic['Domestic'],
+            name='Domestic Sales'
+        ))
+        fig.update_layout(barmode='group', title="Total Production vs Domestic Sales")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("##### Capacity Utilization")
+        utilization_by_product = df_filtered.groupby('Product').agg({
+            'capacity_utilization': 'mean'
+        }).reset_index()
+
+        fig = px.bar(utilization_by_product, x='Product', y='capacity_utilization',
+                     title="Average Capacity Utilization by Product")
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown("##### Production-Demand Mismatch")
+        df_filtered['production_demand_gap'] = df_filtered['Production'] - df_filtered['Domestic']
+
+        gap_by_product = df_filtered.groupby('Product').agg({
+            'production_demand_gap': 'mean'
+        }).reset_index()
+
+        fig = px.bar(gap_by_product, x='Product', y='production_demand_gap',
+                     title="Average Production-Demand Gap")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("##### Production vs Waste Correlation")
+        # Only add trendline if statsmodels is available
+        if HAS_STATSMODELS:
+            fig = px.scatter(df_filtered, x='Production', y='waste', color='Product',
+                             trendline="ols", title="Correlation Between Production Volume and Waste")
+        else:
+            fig = px.scatter(df_filtered, x='Production', y='waste', color='Product',
+                             title="Correlation Between Production Volume and Waste (No Trendline - Install statsmodels)")
+        st.plotly_chart(fig, use_container_width=True)
+
+with tab5:
+    st.markdown('<p class="section-header">💰 Economic Impact Analysis</p>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("##### Value of Waste by Product")
+        waste_value_by_product = df_filtered.groupby('Product').agg({
+            'waste_value': 'sum'
+        }).reset_index().sort_values('waste_value', ascending=False)
+
+        fig = px.bar(waste_value_by_product, x='Product', y='waste_value',
+                     title="Total Value of Waste by Product (Thousand Baht)")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("##### Monthly Waste Value Trends")
+        waste_value_by_month = df_filtered.groupby(['Year', 'Month']).agg({
+            'waste_value': 'sum'
+        }).reset_index()
+        waste_value_by_month['date'] = pd.to_datetime(waste_value_by_month['Year'].astype(str) + '-' + waste_value_by_month['Month'].astype(str))
+
+        fig = px.line(waste_value_by_month, x='date', y='waste_value',
+                      title="Trends in Waste Value Over Time")
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown("##### Waste as Percentage of Shipment Value")
+        total_values = df_filtered.groupby('Product').agg({
+            'Shipment value (thousand baht)': 'sum',
+            'waste_value': 'sum'
+        }).reset_index()
+        total_values['waste_pct_of_value'] = total_values['waste_value'] / total_values['Shipment value (thousand baht)'] * 100
+
+        fig = px.bar(total_values, x='Product', y='waste_pct_of_value',
+                     title="Waste Value as Percentage of Total Shipment Value")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("##### Cost of Waste by Season")
+        waste_value_by_season = df_filtered.groupby('Month').agg({
+            'waste_value': 'mean'
+        }).reset_index()
+
+        fig = px.line(waste_value_by_season, x='Month', y='waste_value',
+                      title="Average Monthly Waste Value (Seasonal Pattern)")
+        st.plotly_chart(fig, use_container_width=True)
 
 # Add summary and recommendations
-st.markdown("---")
-st.markdown('<p class="section-header">📋 Key Insights and Recommendations</p>', unsafe_allow_html=True)
+if has_all_waste_cols and not df_filtered.empty:
+    st.markdown("---")
+    st.markdown('<p class="section-header">📋 Key Insights and Recommendations</p>', unsafe_allow_html=True)
 
-# Generate insights based on data
-if not df_filtered.empty:
     # Find product with highest waste rate
     waste_by_product = df_filtered.groupby('Product').agg({
         'waste': 'sum',
@@ -381,6 +545,7 @@ if not HAS_STATSMODELS:
     st.sidebar.markdown("### Install Additional Package")
     st.sidebar.code("pip install statsmodels")
     st.sidebar.info("Install statsmodels to enable trendline functionality in charts")
+
 
 
 
