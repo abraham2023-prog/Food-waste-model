@@ -39,7 +39,7 @@ def generate_sample_data():
     Months = list(range(1, 13))
     
     data = []
-    for Product, unit in zip(products, units):
+    for Product, unit in zip(products, Unit):
         for year in years:
             for month in months:
                 begin_inventory = np.random.randint(100, 500)
@@ -391,6 +391,7 @@ st.sidebar.download_button(
     file_name="food_waste_analysis.csv",
     mime="text/csv"
 )
+
 
 
 
